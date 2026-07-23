@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+load_dotenv()
 import os
 import re
 from google import genai
@@ -37,7 +39,7 @@ def review_code(diff: str) -> str:
     prompt = _PROMPT_TEMPLATE.format(diff=diff)
     try:
         response = _client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="models/gemini-2.5-flash",
             contents=prompt
         )
     except errors.ClientError as e:
