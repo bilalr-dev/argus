@@ -1,1 +1,1 @@
-# argus
+# Argus - AI Code Review Agent
