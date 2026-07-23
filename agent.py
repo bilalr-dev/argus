@@ -3,6 +3,14 @@ import re
 from google import genai
 from google.genai import errors
 
+def _validate_api_key() -> None:
+    """Raise RuntimeError if GOOGLE_API_KEY is not set in the environment."""
+    if not os.getenv("GOOGLE_API_KEY"):
+        raise RuntimeError("GOOGLE_API_KEY environment variable is not set")
+
+
+_validate_api_key()
+
 _client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
 _PROMPT_TEMPLATE = """
