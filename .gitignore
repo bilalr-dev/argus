@@ -22,7 +22,8 @@ wheels/
 MANIFEST
 
 .env
-.env.*
+backend/.env
+
 .venv/
 venv/
 env/
@@ -73,3 +74,7 @@ Desktop.ini
 conftest.py
 
 .venv-tools/
+
+frontend/node_modules/
+frontend/dist/
+backend/api/reviews.db

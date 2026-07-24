@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from sqlalchemy import Column, String, Text, Integer, DateTime
-from argus.api.database import Base
+from backend.api.database import Base
 
 def _utcnow():
     return datetime.now(timezone.utc)
