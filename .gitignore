@@ -70,3 +70,6 @@ Desktop.ini
 
 *.sqlite3
 *.db
+conftest.py
+
+.venv-tools/
