@@ -13,22 +13,25 @@ export default function HistoryTable({
 }: HistoryTableProps) {
   return (
     <div className="bg-surface-2 border border-border rounded-card overflow-hidden">
+      {/* header */}
       <div
         className="grid px-5 py-3 text-2xs font-bold text-text-secondary uppercase tracking-widest border-b border-border-soft"
-        style={{ gridTemplateColumns: "2.2fr 1fr 0.9fr 0.9fr" }}
+        style={{ gridTemplateColumns: "2.2fr 1fr 0.7fr 0.7fr 0.5fr" }}
       >
         <div>Repo & branch</div>
         <div>Reviewed</div>
         <div>Issues</div>
         <div>Status</div>
+        <div />
       </div>
-      
+
+      {/* rows */}
       {reviews.map((r) => (
         <div
           key={r.id}
           onClick={() => onSelectReview(r)}
-          className="grid items-center px-5 py-4 cursor-pointer border-b border-border-subtle hover:bg-surface-0 transition-colors"
-          style={{ gridTemplateColumns: "2.2fr 1fr 0.9fr 0.9fr" }}
+          className="group grid items-center px-5 py-4 cursor-pointer border-b border-border-subtle hover:bg-surface-0 transition-colors"
+          style={{ gridTemplateColumns: "2.2fr 1fr 0.7fr 0.7fr 0.5fr" }}
         >
           <div className="min-w-0">
             <p className="text-base font-bold truncate">{r.repo_path}</p>
@@ -42,6 +45,12 @@ export default function HistoryTable({
           <div className="text-sm font-bold">{r.issues_found}</div>
           <div>
             <StatusBadge status={r.status} />
+          </div>
+          <div className="flex items-center justify-end">
+            <span className="text-2xs font-bold text-accent opacity-0 group-hover:opacity-100 transition-opacity">
+              View
+              <i className="ti ti-arrow-right ml-1" />
+            </span>
           </div>
         </div>
       ))}
