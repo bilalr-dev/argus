@@ -3,11 +3,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from contextlib import asynccontextmanager
 
-from argus.api.database import get_db, Base, engine
-from argus.api.models import Review
-from argus.api.schemas import ReviewRequest, ReviewResponse
-from argus.core import git_utils
-from argus.core import agent
+from backend.api.database import get_db, Base, engine
+from backend.api.models import Review
+from backend.api.schemas import ReviewRequest, ReviewResponse
+from backend.core import git_utils
+from backend.core import agent
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
