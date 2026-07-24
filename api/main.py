@@ -22,14 +22,18 @@ def create_review(req: ReviewRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="repo_path cannot be empty")
 
     try:
-        diff_text = git_utils.get_diff(req.repo_path, max_lines=req.max_diff_size, base_ref=req.branch)
+        diff_text = git_utils.get_diff(req.repo_path, max_lines=req.max_diff_size, base_ref=req.base_ref)
     except ValueError as e:
         if "exceeds" in str(e).lower():
             raise HTTPException(status_code=413, detail=str(e))
         raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except TimeoutError as e:
+        raise HTTPException(status_code=504, detail=str(e))
 
     if not diff_text.strip():
-        raise HTTPException(status_code=400, detail="No changes found between branch and main")
+        raise HTTPException(status_code=400, detail=f"No changes found between HEAD and {req.base_ref}")
 
     try:
         review_text = agent.review_code(diff_text)
@@ -42,7 +46,7 @@ def create_review(req: ReviewRequest, db: Session = Depends(get_db)):
 
     db_review = Review(
         repo_path=req.repo_path,
-        branch=req.branch,
+        branch=req.base_ref,
         diff=diff_text,
         review=review_text,
         issues_found=issues_found,

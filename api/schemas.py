@@ -1,9 +1,9 @@
 from pydantic import BaseModel, ConfigDict
-from datetime import datetime, timezone
+from datetime import datetime
 
 class ReviewRequest(BaseModel):
     repo_path: str
-    branch: str = "HEAD"
+    base_ref: str = "main"
     max_diff_size: int = 10000
 
 class ReviewResponse(BaseModel):
