@@ -19,9 +19,8 @@ Argus is a local-first AI code review agent that deeply analyzes your branch cha
 - Zero extra costs and zero cloud infrastructural setups whatsoever.
 
 ## Features
-- **SonarQube-Style Reviewing**: In-depth static checks auditing for security vulnerabilities, bugs, code smells, anti-patterns, performance bottlenecks, and general maintainability issues.
+- **In-depth static checks**: Comprehensive static code analysis to detect security vulnerabilities, bugs, code smells, anti-patterns, performance bottlenecks, and maintainability issues.
 - **Side-by-side Navigation**: High density file list with pinpoint issue counts natively tied directly per file.
-- **GitLab-Style Unified Viewer**: HTML line-highlighting diff viewer cleanly mapping out old vs new files horizontally seamlessly. 
 - **Auto-Scroll Targeting**: Click an issue in the panel → auto-jumps the diff viewer to the exact file and specific code line.
 - **History Retention**: Explore your review history dynamically paired with search algorithms and status filters.
 - **Human-in-the-Loop Feedback**: A fast workflow natively integrated to Approve / Edit / Ignore reviewing outputs directly.
@@ -103,12 +102,6 @@ Open [http://localhost:5173](http://localhost:5173)
 7. Click any issue to jump to the exact line in the diff
 8. Approve / Edit / Ignore the review
 
-## Running tests
-```bash
-cd backend
-python -m pytest argus/tests/ -v
-```
-> 83 tests, 0 warnings.
 
 ## Tech stack table
 | Layer | Technology |
