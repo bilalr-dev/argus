@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import type { Review, ReviewStatus } from "../types";
-import { parseFilesFromDiff } from "../utils/parseDiff";
+import { useEffect, useMemo, useRef, useState } from "react";import type { Review, ReviewStatus } from "../types";
 import { shortRepoName } from "../utils/shortRepoName";
+import { parseFilesFromDiff } from "../utils/parseDiff";
 import { stripMarkdown } from "../utils/stripMarkdown";
 import DiffViewer, { type HighlightedLine } from "./DiffViewer";
 import StatusBadge from "./StatusBadge";
@@ -116,7 +115,7 @@ export default function ReviewPanel({
 }: ReviewPanelProps) {
   const [highlightedLine, setHighlightedLine] =
     useState<HighlightedLine | null>(null);
-  const [pendingLine, setPendingLine] = useState<number | null>(null);
+  const pendingLineRef = useRef<number | null>(null);
 
   const files = useMemo(
     () => parseFilesFromDiff(review.diff),
@@ -127,37 +126,34 @@ export default function ReviewPanel({
   const selectedFileDiff = files.find((f) => f.filename === activeFile);
 
   useEffect(() => {
-    if (pendingLine !== null) {
-      setHighlightedLine({ line: pendingLine, side: "new" });
-      setPendingLine(null);
+    if (pendingLineRef.current !== null) {
+      setHighlightedLine({ line: pendingLineRef.current, side: "new" });
+      pendingLineRef.current = null;
     }
-  }, [activeFile, pendingLine]);
+  }, [activeFile]);
 
   const parsed = useMemo(
     () => parseReviewText(review.review),
     [review.review]
   );
 
-  const allIssues = [
-    ...parsed.criticalIssues,
-    ...parsed.mediumIssues,
-    ...parsed.lowIssues,
-  ];
-
   const issuesByFile = useMemo(() => {
-    return allIssues.reduce<Record<string, ParsedIssue[]>>((acc, issue) => {
+    const all = [
+      ...parsed.criticalIssues,
+      ...parsed.mediumIssues,
+      ...parsed.lowIssues,
+    ];
+    return all.reduce<Record<string, ParsedIssue[]>>((acc, issue) => {
       const key = issue.filename || "unknown";
       if (!acc[key]) acc[key] = [];
       acc[key].push(issue);
       return acc;
     }, {});
-  }, [allIssues]);
+  }, [parsed]);
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Sticky header */}
       <div className="bg-surface-2 border border-border rounded-card px-6 py-4 flex flex-col gap-1 sticky top-0 z-10">
-        {/* Breadcrumb */}
         <div className="w-full flex items-center gap-1.5 text-sm text-text-muted mb-1">
           <span>Argus</span>
           <i className="ti ti-chevron-right text-xs" />
@@ -169,7 +165,6 @@ export default function ReviewPanel({
             {review.branch}
           </span>
         </div>
-        {/* Header row */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <p className="text-lg font-extrabold truncate">
@@ -182,18 +177,21 @@ export default function ReviewPanel({
           </div>
           <div className="flex items-center gap-2.5 flex-shrink-0">
             <button
+              type="button"
               onClick={() => onStatusChange(review.id, "approved")}
               className="bg-accent text-white text-sm font-bold px-4 py-2 rounded-[9px] border-none cursor-pointer hover:bg-accent-hover transition-colors"
             >
               Approve
             </button>
             <button
+              type="button"
               onClick={() => onStatusChange(review.id, "edited")}
               className="bg-surface-2 border border-border text-text-primary text-sm font-bold px-4 py-2 rounded-[9px] cursor-pointer hover:bg-surface-0 transition-colors"
             >
               Edit
             </button>
             <button
+              type="button"
               onClick={() => onStatusChange(review.id, "ignored")}
               className="bg-transparent border-none text-text-secondary text-sm font-bold px-2.5 py-2 rounded-[9px] cursor-pointer hover:bg-surface-0 transition-colors"
             >
@@ -203,12 +201,10 @@ export default function ReviewPanel({
         </div>
       </div>
 
-      {/* 3-column body */}
       <div
         className="grid gap-4 min-h-0"
         style={{ gridTemplateColumns: "180px 1fr 300px" }}
       >
-        {/* File list panel */}
         <div className="bg-surface-2 border border-border rounded-card overflow-y-auto max-h-[600px]">
           <div className="px-3 py-2.5 border-b border-border-soft">
             <p className="text-2xs font-bold text-text-muted uppercase tracking-widest">
@@ -217,6 +213,7 @@ export default function ReviewPanel({
           </div>
           {files.map((f) => (
             <button
+              type="button"
               key={f.filename}
               onClick={() => {
                 onFileSelect(f.filename);
@@ -249,7 +246,6 @@ export default function ReviewPanel({
           ))}
         </div>
 
-        {/* Diff panel — flexible width, scrollable */}
         <div className="flex-1 min-w-0 overflow-y-auto max-h-[700px]">
           {selectedFileDiff && (
             <DiffViewer
@@ -260,18 +256,16 @@ export default function ReviewPanel({
           )}
         </div>
 
-        {/* Feedback panel */}
         <div className="flex flex-col gap-3.5 min-w-0 overflow-hidden">
-          {/* What's working */}
           {parsed.positives.length > 0 && (
             <div className="bg-surface-2 border border-border rounded-card p-[18px] min-w-0 overflow-hidden">
               <p className="text-2xs font-extrabold text-[oklch(45%_0.13_150)] mb-2.5">
                 What's working
               </p>
               <div className="flex flex-col gap-2">
-                {parsed.positives.map((p, i) => (
+                {parsed.positives.map((p) => (
                   <div
-                    key={i}
+                    key={`positive-${p.slice(0, 20)}`}
                     className="flex gap-2 text-sm text-text-primary"
                   >
                     <i className="ti ti-circle-check flex-shrink-0 text-[oklch(55%_0.13_150)] mt-0.5" />
@@ -282,7 +276,6 @@ export default function ReviewPanel({
             </div>
           )}
 
-          {/* Issues grouped by file */}
           {Object.entries(issuesByFile).map(([filename, issues]) => (
             <div
               key={filename}
@@ -294,10 +287,11 @@ export default function ReviewPanel({
               <div className="flex flex-col gap-3">
                 {issues.map((issue, i) => (
                   <button
-                    key={i}
+                    type="button"
+                    key={`${issue.filename}-${issue.line}-${issue.title.slice(0, 10)}`}
                     onClick={() => {
                       onFileSelect(filename);
-                      setPendingLine(issue.line);
+                      pendingLineRef.current = issue.line;
                     }}
                     className="text-left w-full group bg-transparent border-none p-0 cursor-pointer font-sans"
                   >
@@ -334,7 +328,6 @@ export default function ReviewPanel({
             </div>
           ))}
 
-          {/* AI Summary */}
           {parsed.summary && (
             <div className="bg-accent-tint rounded-card px-[18px] py-4 text-sm text-[oklch(32%_0.05_262)] leading-relaxed break-words">
               {parsed.summary}

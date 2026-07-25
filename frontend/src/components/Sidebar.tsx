@@ -49,6 +49,7 @@ export default function Sidebar({
             (screen === "detail" && item.key === "history");
           return (
             <button
+              type="button"
               key={item.key}
               onClick={() => onNavigate(item.key)}
               className={`flex items-center gap-2.5 rounded-[10px] px-3 py-2.5 text-sm border-none cursor-pointer w-full text-left font-sans transition-colors ${
@@ -71,6 +72,7 @@ export default function Sidebar({
           </p>
           {recentReviews.map((r) => (
             <button
+              type="button"
               key={r.id}
               onClick={() => onOpenReview(r)}
               className="text-left px-3 py-2 rounded-[10px] hover:bg-surface-0 transition-colors w-full bg-transparent border-none cursor-pointer font-sans"

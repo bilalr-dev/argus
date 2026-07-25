@@ -18,6 +18,7 @@ export default function DetailView({
   return (
     <div className="flex flex-col gap-[22px]">
       <button
+        type="button"
         onClick={onBack}
         className="flex items-center gap-1.5 text-sm font-bold text-accent w-fit bg-transparent border-none cursor-pointer p-0 hover:opacity-80 transition-opacity"
       >

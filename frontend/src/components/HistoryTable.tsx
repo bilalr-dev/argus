@@ -13,7 +13,6 @@ export default function HistoryTable({
 }: HistoryTableProps) {
   return (
     <div className="bg-surface-2 border border-border rounded-card overflow-hidden">
-      {/* header */}
       <div
         className="grid px-5 py-3 text-2xs font-bold text-text-secondary uppercase tracking-widest border-b border-border-soft"
         style={{ gridTemplateColumns: "2.2fr 1fr 0.7fr 0.7fr 0.5fr" }}
@@ -25,12 +24,12 @@ export default function HistoryTable({
         <div />
       </div>
 
-      {/* rows */}
       {reviews.map((r) => (
-        <div
+        <button
+          type="button"
           key={r.id}
           onClick={() => onSelectReview(r)}
-          className="group grid items-center px-5 py-4 cursor-pointer border-b border-border-subtle hover:bg-surface-0 transition-colors"
+          className="w-full text-left grid items-center px-5 py-4 cursor-pointer border-b border-border-subtle hover:bg-surface-0 transition-colors group bg-transparent border-none font-sans"
           style={{ gridTemplateColumns: "2.2fr 1fr 0.7fr 0.7fr 0.5fr" }}
         >
           <div className="min-w-0">
@@ -52,7 +51,7 @@ export default function HistoryTable({
               <i className="ti ti-arrow-right ml-1" />
             </span>
           </div>
-        </div>
+        </button>
       ))}
       {reviews.length === 0 && (
         <div className="px-5 py-10 text-center text-sm text-text-muted">

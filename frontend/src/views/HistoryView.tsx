@@ -42,11 +42,14 @@ export default function HistoryView({ onSelectReview }: HistoryViewProps) {
         </p>
       </div>
 
-      {/* Search + filter */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
+          <label htmlFor="history-search" className="sr-only">
+            Search reviews
+          </label>
           <i className="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input
+            id="history-search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by repo or branch..."
@@ -54,10 +57,10 @@ export default function HistoryView({ onSelectReview }: HistoryViewProps) {
           />
         </div>
 
-        {/* Status filter pills */}
         <div className="flex items-center gap-1.5">
           {STATUS_OPTIONS.map((s) => (
             <button
+              type="button"
               key={s}
               onClick={() => setStatusFilter(s)}
               className={`text-2xs font-bold px-3 py-1.5 rounded-badge transition-colors capitalize border-none cursor-pointer font-sans ${

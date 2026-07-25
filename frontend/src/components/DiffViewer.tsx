@@ -25,12 +25,10 @@ function parseDiff(diff: string): { filename: string; rows: DiffRow[] } {
   let filename = "";
 
   for (const line of lines) {
-    // Extract filename
     if (line.startsWith("+++ b/")) {
       filename = line.slice(6).trim();
       continue;
     }
-    // Skip header lines
     if (
       line.startsWith("diff --git") ||
       line.startsWith("index ") ||
@@ -41,7 +39,6 @@ function parseDiff(diff: string): { filename: string; rows: DiffRow[] } {
       line === "\\ No newline at end of file"
     ) continue;
 
-    // Hunk header
     if (line.startsWith("@@")) {
       const match = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/)
       if (match) {
@@ -99,21 +96,19 @@ export default function DiffViewer({
   return (
     <div className="bg-white border border-border rounded-card
                     overflow-hidden">
-      {/* File header */}
       <div className="px-4 py-2.5 border-b border-border
                       font-mono text-sm font-bold
                       text-text-secondary bg-surface-0">
         {filename}
       </div>
 
-      {/* Diff rows */}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse min-w-[600px]">
           <tbody>
-            {rows.map((row, i) => {
+            {rows.map((row) => {
               if (row.kind === "sep") {
                 return (
-                  <tr key={i}
+                  <tr key={`${row.kind}-${row.oldLine ?? ""}-${row.newLine ?? ""}`}
                       className="bg-[#ddf4ff]">
                     <td colSpan={4}
                         className="px-3 py-1 font-mono text-xs
@@ -155,7 +150,7 @@ export default function DiffViewer({
                   : "text-transparent";
 
               return (
-                <tr key={i}
+                <tr key={`${row.kind}-${row.oldLine ?? ""}-${row.newLine ?? ""}`}
                     ref={isHighlighted ? highlightedRowRef : null}
                     onClick={() => {
                       if (row.kind === "remove") {
@@ -166,33 +161,42 @@ export default function DiffViewer({
                         onLineClick({ line: row.newLine!, side: "both" });
                       }
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        if (row.kind === "remove") {
+                          onLineClick({ line: row.oldLine!, side: "old" });
+                        } else if (row.kind === "add") {
+                          onLineClick({ line: row.newLine!, side: "new" });
+                        } else {
+                          onLineClick({ line: row.newLine!, side: "both" });
+                        }
+                      }
+                    }}
+                    tabIndex={0}
+                    role="button"
                     className={`${rowBg} cursor-pointer
                       hover:brightness-95 transition-all
                       ${isHighlighted
                         ? "outline outline-2 outline-accent"
                         : ""
                       }`}>
-                  {/* Old line number */}
                   <td className="w-[40px] text-right px-2 py-0.5
                                  font-mono text-xs text-text-muted
                                  select-none border-r border-border-subtle
                                  align-top">
                     {row.oldLine ?? ""}
                   </td>
-                  {/* New line number */}
                   <td className="w-[40px] text-right px-2 py-0.5
                                  font-mono text-xs text-text-muted
                                  select-none border-r border-border-subtle
                                  align-top">
                     {row.newLine ?? ""}
                   </td>
-                  {/* Gutter symbol */}
                   <td className={`w-[20px] text-center px-1 py-0.5
                                   font-mono text-xs font-bold
                                   select-none align-top ${symbolColor}`}>
                     {symbol}
                   </td>
-                  {/* Content */}
                   <td className="px-3 py-0.5 align-top">
                     <pre className="font-mono text-xs text-[#24292f]
                                     whitespace-pre m-0 leading-[1.65]">

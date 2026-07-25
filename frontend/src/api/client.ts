@@ -21,11 +21,7 @@ export async function getReviews(): Promise<ReviewsResponse> {
   return res.json();
 }
 
-export async function getReview(id: string): Promise<Review> {
-  const res = await fetch(`${BASE}/reviews/${id}`);
-  if (!res.ok) throw new Error("Review not found");
-  return res.json();
-}
+
 
 export async function updateReviewStatus(
   id: string,

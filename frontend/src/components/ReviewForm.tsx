@@ -19,10 +19,11 @@ export default function ReviewForm({
     <div className="bg-surface-2 border border-border rounded-card p-6">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-semibold text-[oklch(40%_0.02_255)] mb-1.5">
+          <label htmlFor="repo-path" className="block text-sm font-semibold text-[oklch(40%_0.02_255)] mb-1.5">
             Repository path
           </label>
           <input
+            id="repo-path"
             type="text"
             value={repoPath}
             onChange={(e) => onRepoChange(e.target.value)}
@@ -31,10 +32,11 @@ export default function ReviewForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-[oklch(40%_0.02_255)] mb-1.5">
+          <label htmlFor="base-ref" className="block text-sm font-semibold text-[oklch(40%_0.02_255)] mb-1.5">
             Base ref
           </label>
           <input
+            id="base-ref"
             type="text"
             value={baseRef}
             onChange={(e) => onBaseRefChange(e.target.value)}
@@ -50,6 +52,7 @@ export default function ReviewForm({
       </p>
       <div className="flex justify-end mt-[18px]">
         <button
+          type="submit"
           onClick={onSubmit}
           disabled={loading || !repoPath.trim()}
           className={`bg-accent text-white font-bold rounded-btn px-[22px] py-[11px] text-base cursor-pointer border-none font-sans hover:bg-accent-hover transition-colors ${
