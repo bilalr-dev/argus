@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Review, ReviewStatus } from "../types";
 import { parseFilesFromDiff } from "../utils/parseDiff";
 import { shortRepoName } from "../utils/shortRepoName";
-import DiffViewer from "./DiffViewer";
+import { stripMarkdown } from "../utils/stripMarkdown";
+import DiffViewer, { type HighlightedLine } from "./DiffViewer";
 import StatusBadge from "./StatusBadge";
 
 interface ReviewPanelProps {
@@ -12,98 +13,99 @@ interface ReviewPanelProps {
   onStatusChange: (id: string, status: ReviewStatus) => void;
 }
 
+interface ParsedReview {
+  criticalIssues: ParsedIssue[];
+  mediumIssues: ParsedIssue[];
+  lowIssues: ParsedIssue[];
+  positives: string[];
+  summary: string;
+}
+
 interface ParsedIssue {
+  filename: string;
   line: number;
   title: string;
   detail: string;
   severity: "warning" | "info";
-  filename: string;
 }
 
-type IssuesByFile = Record<string, ParsedIssue[]>;
+function parseReviewText(text: string): ParsedReview {
+  const sections = text.split(/^##\s+/m);
 
-function parseReviewText(text: string, filenames: string[]) {
-  const positives: string[] = [];
-  const posSection = text.match(
-    /Positive Feedback([\s\S]*?)(?=Summary|$)/i
-  )?.[1];
-  if (posSection) {
-    const lines = posSection.split("\n");
-    for (const line of lines) {
-      const trimmed = line.replace(/^[\s\-•*]+/, "").trim();
-      if (trimmed.length > 0) {
-        positives.push(trimmed);
-      }
+  let criticalIssues: ParsedIssue[] = [];
+  let mediumIssues: ParsedIssue[] = [];
+  let lowIssues: ParsedIssue[] = [];
+  let positives: string[] = [];
+  let summary = "";
+
+  for (const section of sections) {
+    const firstLine = section.split("\n")[0].toLowerCase();
+    const body = section.slice(section.indexOf("\n") + 1);
+
+    if (firstLine.includes("critical")) {
+      criticalIssues = parseIssueBlock(body, "warning");
+    } else if (firstLine.includes("medium")) {
+      mediumIssues = parseIssueBlock(body, "info");
+    } else if (firstLine.includes("low") || firstLine.includes("info")) {
+      lowIssues = parseIssueBlock(body, "info");
+    } else if (firstLine.includes("positive") || firstLine.includes("what")) {
+      positives = parsePositives(body);
+    } else if (firstLine.includes("summary")) {
+      summary = stripMarkdown(body.trim());
     }
   }
 
-  const summary = text.match(/Summary\n?([\s\S]*?)$/i)?.[1]?.trim() ?? "";
-
-  // Parse issues and assign to files
-  const allIssues: ParsedIssue[] = [];
-
-  // Split review into file-specific sections by looking for filename references
-  // The Gemini review often structures issues per file section
-  const critSection = text.match(
-    /Critical Issues[\s\S]*?(?=Medium Issues|Positive Feedback|Summary|$)/i
-  )?.[0];
-  const medSection = text.match(
-    /Medium Issues[\s\S]*?(?=Positive Feedback|Summary|$)/i
-  )?.[0];
-
-  const issuePattern = /Line (\d+)[^\n]*?[—–-]\s*([^\n]+)\n([^\n]+)/g;
-
-  if (critSection) {
-    let match: RegExpExecArray | null;
-    while ((match = issuePattern.exec(critSection)) !== null) {
-      const lineNum = parseInt(match[1], 10);
-      const assignedFile = findFileForLine(lineNum, filenames, text) ?? filenames[0] ?? "unknown";
-      allIssues.push({
-        line: lineNum,
-        title: match[2].trim(),
-        detail: match[3].trim(),
-        severity: "warning",
-        filename: assignedFile,
-      });
-    }
-  }
-
-  if (medSection) {
-    issuePattern.lastIndex = 0;
-    let match: RegExpExecArray | null;
-    while ((match = issuePattern.exec(medSection)) !== null) {
-      const lineNum = parseInt(match[1], 10);
-      const assignedFile = findFileForLine(lineNum, filenames, text) ?? filenames[0] ?? "unknown";
-      allIssues.push({
-        line: lineNum,
-        title: match[2].trim(),
-        detail: match[3].trim(),
-        severity: "info",
-        filename: assignedFile,
-      });
-    }
-  }
-
-  const issuesByFile: IssuesByFile = {};
-  for (const issue of allIssues) {
-    if (!issuesByFile[issue.filename]) {
-      issuesByFile[issue.filename] = [];
-    }
-    issuesByFile[issue.filename].push(issue);
-  }
-
-  return { positives, summary, issuesByFile };
+  return { criticalIssues, mediumIssues, lowIssues, positives, summary };
 }
 
-function findFileForLine(
-  _line: number,
-  filenames: string[],
-  _text: string
-): string | undefined {
-  // Simple heuristic: if there's only one file, assign to it.
-  // For multi-file reviews, assign to first file by default.
-  if (filenames.length === 1) return filenames[0];
-  return filenames[0];
+function parseIssueBlock(
+  text: string,
+  severity: "warning" | "info"
+): ParsedIssue[] {
+  const issues: ParsedIssue[] = [];
+
+  const issueBlocks = text.split(/(?=^- \*\*)/m).filter((b) => b.trim());
+
+  for (const block of issueBlocks) {
+    const headerMatch = block.match(
+      /^- \*\*([^,*]+),\s*Line\s*(\d+)\*\*:\s*(?:\[[^\]]*\]\s*)?(.*)/
+    );
+    if (!headerMatch) continue;
+
+    const filename = headerMatch[1].trim();
+    const line = parseInt(headerMatch[2]);
+    const title = stripMarkdown(headerMatch[3].trim());
+
+    const problemMatch = block.match(/Problem:\s*([^\n]+(?:\n(?!Fix:)[^\n]+)*)/);
+    const fixMatch = block.match(/Fix:\s*([^\n]+(?:\n(?!- \*\*)[^\n]+)*)/);
+
+    const problem = problemMatch ? stripMarkdown(problemMatch[1].trim()) : "";
+    const fix = fixMatch ? stripMarkdown(fixMatch[1].trim()) : "";
+
+    const detail = [problem, fix ? `Fix: ${fix}` : ""]
+      .filter(Boolean)
+      .join(" ");
+
+    issues.push({ filename, line, title, detail, severity });
+  }
+
+  return issues;
+}
+
+function parsePositives(text: string): string[] {
+  return text
+    .split("\n")
+    .map((line) => line.replace(/^[-*•]\s*/, "").trim())
+    .map((line) => stripMarkdown(line))
+    .filter(
+      (line) =>
+        line.length > 0 &&
+        !line.startsWith("#") &&
+        !line.startsWith("`") &&
+        !line.startsWith("//") &&
+        !line.includes("typescript") &&
+        !line.includes("```")
+    );
 }
 
 export default function ReviewPanel({
@@ -112,22 +114,44 @@ export default function ReviewPanel({
   onFileSelect,
   onStatusChange,
 }: ReviewPanelProps) {
-  const [highlightedLine, setHighlightedLine] = useState<number | null>(null);
+  const [highlightedLine, setHighlightedLine] =
+    useState<HighlightedLine | null>(null);
+  const [pendingLine, setPendingLine] = useState<number | null>(null);
 
   const files = useMemo(
     () => parseFilesFromDiff(review.diff),
     [review.diff]
   );
 
-  const filenames = useMemo(() => files.map((f) => f.filename), [files]);
-
   const activeFile = selectedFileName ?? files[0]?.filename ?? null;
   const selectedFileDiff = files.find((f) => f.filename === activeFile);
 
-  const { positives, summary, issuesByFile } = useMemo(
-    () => parseReviewText(review.review, filenames),
-    [review.review, filenames]
+  useEffect(() => {
+    if (pendingLine !== null) {
+      setHighlightedLine({ line: pendingLine, side: "new" });
+      setPendingLine(null);
+    }
+  }, [activeFile, pendingLine]);
+
+  const parsed = useMemo(
+    () => parseReviewText(review.review),
+    [review.review]
   );
+
+  const allIssues = [
+    ...parsed.criticalIssues,
+    ...parsed.mediumIssues,
+    ...parsed.lowIssues,
+  ];
+
+  const issuesByFile = useMemo(() => {
+    return allIssues.reduce<Record<string, ParsedIssue[]>>((acc, issue) => {
+      const key = issue.filename || "unknown";
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(issue);
+      return acc;
+    }, {});
+  }, [allIssues]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -180,9 +204,17 @@ export default function ReviewPanel({
       </div>
 
       {/* 3-column body */}
-      <div className="flex gap-4 min-h-0">
-        {/* File list panel — 200px, independently scrollable */}
-        <div className="w-[200px] flex-shrink-0 bg-surface-2 border border-border rounded-card overflow-y-auto max-h-[600px]">
+      <div
+        className="grid gap-4 min-h-0"
+        style={{ gridTemplateColumns: "180px 1fr 300px" }}
+      >
+        {/* File list panel */}
+        <div className="bg-surface-2 border border-border rounded-card overflow-y-auto max-h-[600px]">
+          <div className="px-3 py-2.5 border-b border-border-soft">
+            <p className="text-2xs font-bold text-text-muted uppercase tracking-widest">
+              Files changed
+            </p>
+          </div>
           {files.map((f) => (
             <button
               key={f.filename}
@@ -217,8 +249,8 @@ export default function ReviewPanel({
           ))}
         </div>
 
-        {/* Diff panel — flexible width */}
-        <div className="flex-1 min-w-0">
+        {/* Diff panel — flexible width, scrollable */}
+        <div className="flex-1 min-w-0 overflow-y-auto max-h-[700px]">
           {selectedFileDiff && (
             <DiffViewer
               diff={selectedFileDiff.rawDiff}
@@ -228,22 +260,22 @@ export default function ReviewPanel({
           )}
         </div>
 
-        {/* Feedback panel — 280px */}
-        <div className="w-[280px] flex-shrink-0 flex flex-col gap-3.5">
+        {/* Feedback panel */}
+        <div className="flex flex-col gap-3.5 min-w-0 overflow-hidden">
           {/* What's working */}
-          {positives.length > 0 && (
-            <div className="bg-surface-2 border border-border rounded-card p-[18px]">
+          {parsed.positives.length > 0 && (
+            <div className="bg-surface-2 border border-border rounded-card p-[18px] min-w-0 overflow-hidden">
               <p className="text-2xs font-extrabold text-[oklch(45%_0.13_150)] mb-2.5">
                 What's working
               </p>
               <div className="flex flex-col gap-2">
-                {positives.map((p, i) => (
+                {parsed.positives.map((p, i) => (
                   <div
                     key={i}
                     className="flex gap-2 text-sm text-text-primary"
                   >
                     <i className="ti ti-circle-check flex-shrink-0 text-[oklch(55%_0.13_150)] mt-0.5" />
-                    <span>{p}</span>
+                    <span className="break-words">{p}</span>
                   </div>
                 ))}
               </div>
@@ -265,7 +297,7 @@ export default function ReviewPanel({
                     key={i}
                     onClick={() => {
                       onFileSelect(filename);
-                      setHighlightedLine(issue.line);
+                      setPendingLine(issue.line);
                     }}
                     className="text-left w-full group bg-transparent border-none p-0 cursor-pointer font-sans"
                   >
@@ -277,12 +309,14 @@ export default function ReviewPanel({
                             : "bg-[oklch(94%_0.03_262)] text-[oklch(42%_0.12_262)]"
                         }`}
                       >
-                        {issue.severity === "warning" ? (
-                          <i className="ti ti-alert-circle mr-0.5" />
-                        ) : (
-                          <i className="ti ti-info-circle mr-0.5" />
-                        )}
-                        {issue.severity}
+                        <i
+                          className={`mr-0.5 ${
+                            issue.severity === "warning"
+                              ? "ti ti-alert-circle"
+                              : "ti ti-info-circle"
+                          }`}
+                        />
+                        {issue.severity === "warning" ? "warning" : "info"}
                       </span>
                       <span className="text-2xs text-text-muted font-mono">
                         line {issue.line}
@@ -291,7 +325,7 @@ export default function ReviewPanel({
                     <p className="text-sm font-semibold group-hover:text-accent transition-colors">
                       {issue.title}
                     </p>
-                    <p className="text-xs text-text-secondary mt-0.5 leading-relaxed">
+                    <p className="text-xs text-text-secondary mt-0.5 leading-relaxed break-words">
                       {issue.detail}
                     </p>
                   </button>
@@ -301,9 +335,9 @@ export default function ReviewPanel({
           ))}
 
           {/* AI Summary */}
-          {summary && (
-            <div className="bg-accent-tint rounded-card px-[18px] py-4 text-sm text-[oklch(32%_0.05_262)] leading-relaxed">
-              {summary}
+          {parsed.summary && (
+            <div className="bg-accent-tint rounded-card px-[18px] py-4 text-sm text-[oklch(32%_0.05_262)] leading-relaxed break-words">
+              {parsed.summary}
             </div>
           )}
         </div>

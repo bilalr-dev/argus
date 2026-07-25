@@ -31,12 +31,14 @@ export default function Sidebar({
       <div>
         <div className="flex items-center gap-2.5">
           <div className="w-[30px] h-[30px] rounded-[9px] bg-accent flex items-center justify-center flex-shrink-0">
-            <div className="w-[11px] h-[11px] rounded-full border-2 border-white" />
+            <span className="text-white font-extrabold text-sm leading-none">
+              A
+            </span>
           </div>
           <span className="text-xl font-extrabold tracking-tight">Argus</span>
         </div>
         <p className="text-sm text-text-secondary leading-snug mt-2">
-          AI code review.
+          AI code review, right on your laptop.
         </p>
       </div>
 

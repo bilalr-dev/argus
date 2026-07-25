@@ -58,7 +58,7 @@ export default function App() {
         onNavigate={setScreen}
         onOpenReview={handleOpenReview}
       />
-      <main className="flex-1 min-w-0 p-10 flex flex-col gap-7 max-w-[1180px]">
+      <main className="flex-1 min-w-0 px-10 py-8 flex flex-col gap-7">
         {screen === "new" && (
           <NewReviewView
             activeReview={activeReview}
