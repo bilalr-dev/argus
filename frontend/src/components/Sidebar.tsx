@@ -86,7 +86,8 @@ export default function Sidebar({
         </div>
       )}
 
-      <p className="mt-auto text-[12px] text-text-muted leading-relaxed pt-4 border-t border-border-soft">
+      <p className="mt-auto text-[12px] text-text-muted leading-relaxed
+              pt-4 border-t border-border-soft text-justify">
         Your code stays on your machine, with only what's needed for analysis
         leaving your device.
       </p>
