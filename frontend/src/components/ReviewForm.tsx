@@ -43,6 +43,11 @@ export default function ReviewForm({
           />
         </div>
       </div>
+      <p className="text-sm text-text-secondary mt-4">
+        Argus diffs against{" "}
+        <span className="font-semibold text-text-primary">{baseRef}</span>
+        {" "}and reviews every changed file.
+      </p>
       <div className="flex justify-end mt-[18px]">
         <button
           onClick={onSubmit}

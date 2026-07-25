@@ -1,3 +1,4 @@
+import { useState } from "react";
 import ReviewPanel from "../components/ReviewPanel";
 import type { Review, ReviewStatus } from "../types";
 
@@ -12,6 +13,8 @@ export default function DetailView({
   onBack,
   onStatusChange,
 }: DetailViewProps) {
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+
   return (
     <div className="flex flex-col gap-[22px]">
       <button
@@ -21,7 +24,12 @@ export default function DetailView({
         <i className="ti ti-arrow-left" />
         Back to history
       </button>
-      <ReviewPanel review={review} onStatusChange={onStatusChange} />
+      <ReviewPanel
+        review={review}
+        selectedFileName={selectedFileName}
+        onFileSelect={setSelectedFileName}
+        onStatusChange={onStatusChange}
+      />
     </div>
   );
 }

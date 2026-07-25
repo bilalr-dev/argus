@@ -17,10 +17,12 @@ export default function NewReviewView({
   const [baseRef, setBaseRef] = useState("main");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
 
   async function handleSubmit() {
     setLoading(true);
     setError(null);
+    setSelectedFileName(null);
     try {
       const review = await postReview({
         repo_path: repoPath,
@@ -52,7 +54,8 @@ export default function NewReviewView({
           Review your branch
         </h1>
         <p className="text-sm text-text-secondary mt-1">
-          Point Argus at a local repo and get feedback before you open a merge request.
+          Point Argus at a local repo and get feedback before you open a merge
+          request.
         </p>
       </div>
 
@@ -83,6 +86,8 @@ export default function NewReviewView({
       {activeReview && !loading && (
         <ReviewPanel
           review={activeReview}
+          selectedFileName={selectedFileName}
+          onFileSelect={setSelectedFileName}
           onStatusChange={handleStatusChange}
         />
       )}

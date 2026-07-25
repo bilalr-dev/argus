@@ -1,102 +1,82 @@
-import { useMemo } from "react";
+import { useEffect, useRef } from "react";
+export interface HighlightedLine {
+  line: number;
+  side: "old" | "new" | "both";
+}
 
 interface DiffViewerProps {
   diff: string;
-  highlightedLine: number | null;
-  onLineClick: (line: number) => void;
+  highlightedLine: HighlightedLine | null;
+  onLineClick: (h: HighlightedLine) => void;
 }
 
-type DiffRow =
-  | { kind: "sep"; label: string }
-  | {
-      kind: "ctx" | "add" | "remove";
-      leftLine: number | null;
-      leftText: string;
-      rightLine: number | null;
-      rightText: string;
-    };
+interface DiffRow {
+  kind: "context" | "add" | "remove" | "sep" | "skip";
+  oldLine: number | null;
+  newLine: number | null;
+  content: string;
+}
 
-function parseDiff(raw: string): { filename: string; rows: DiffRow[] } {
-  const lines = raw.split("\n");
+function parseDiff(diff: string): { filename: string; rows: DiffRow[] } {
+  const lines = diff.split("\n");
   const rows: DiffRow[] = [];
-  let leftCounter = 0;
-  let rightCounter = 0;
+  let oldLine = 0;
+  let newLine = 0;
   let filename = "";
 
   for (const line of lines) {
-    if (line.startsWith("diff --git")) {
+    // Extract filename
+    if (line.startsWith("+++ b/")) {
+      filename = line.slice(6).trim();
       continue;
     }
+    // Skip header lines
+    if (
+      line.startsWith("diff --git") ||
+      line.startsWith("index ") ||
+      line.startsWith("--- ") ||
+      line.startsWith("new file mode") ||
+      line.startsWith("deleted file mode") ||
+      line.startsWith("Binary files") ||
+      line === "\\ No newline at end of file"
+    ) continue;
 
-    if (line.startsWith("---")) {
-      continue;
-    }
-
-    if (line.startsWith("+++")) {
-      const match = line.match(/\+\+\+ [ab]\/(.+)/);
-      if (match) {
-        filename = match[1];
-      }
-      continue;
-    }
-
+    // Hunk header
     if (line.startsWith("@@")) {
-      const match = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+      const match = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/)
       if (match) {
-        leftCounter = parseInt(match[1], 10);
-        rightCounter = parseInt(match[2], 10);
+        oldLine = parseInt(match[1]);
+        newLine = parseInt(match[2]);
       }
-      rows.push({ kind: "sep", label: line });
+      rows.push({ kind: "sep", oldLine: null, newLine: null, content: line });
       continue;
     }
 
     if (line.startsWith("-")) {
       rows.push({
         kind: "remove",
-        leftLine: leftCounter,
-        leftText: line.slice(1),
-        rightLine: null,
-        rightText: "",
+        oldLine: oldLine++,
+        newLine: null,
+        content: line.slice(1),
       });
-      leftCounter++;
-      continue;
-    }
-
-    if (line.startsWith("+")) {
+    } else if (line.startsWith("+")) {
       rows.push({
         kind: "add",
-        leftLine: null,
-        leftText: "",
-        rightLine: rightCounter,
-        rightText: line.slice(1),
+        oldLine: null,
+        newLine: newLine++,
+        content: line.slice(1),
       });
-      rightCounter++;
-      continue;
+    } else {
+      rows.push({
+        kind: "context",
+        oldLine: oldLine++,
+        newLine: newLine++,
+        content: line.slice(1) || line,
+      });
     }
-
-    const text = line.startsWith(" ") ? line.slice(1) : line;
-    rows.push({
-      kind: "ctx",
-      leftLine: leftCounter,
-      leftText: text,
-      rightLine: rightCounter,
-      rightText: text,
-    });
-    leftCounter++;
-    rightCounter++;
   }
 
   return { filename, rows };
-}
-
-function getLeftBg(kind: DiffRow["kind"]): string {
-  if (kind === "remove") return "bg-diff-removed";
-  return "bg-surface-2";
-}
-
-function getRightBg(kind: DiffRow["kind"]): string {
-  if (kind === "add") return "bg-diff-added";
-  return "bg-surface-2";
 }
 
 export default function DiffViewer({
@@ -104,62 +84,126 @@ export default function DiffViewer({
   highlightedLine,
   onLineClick,
 }: DiffViewerProps) {
-  const { filename, rows } = useMemo(() => parseDiff(diff), [diff]);
+  const { filename, rows } = parseDiff(diff);
+  const highlightedRowRef = useRef<HTMLTableRowElement>(null);
+
+  useEffect(() => {
+    if (highlightedRowRef.current) {
+      highlightedRowRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+  }, [highlightedLine]);
 
   return (
-    <div className="bg-surface-2 border border-border rounded-card overflow-hidden">
-      <div className="px-[18px] py-3 border-b border-border-soft font-mono text-sm font-bold text-text-secondary">
-        {filename || "diff"}
+    <div className="bg-white border border-border rounded-card
+                    overflow-hidden">
+      {/* File header */}
+      <div className="px-4 py-2.5 border-b border-border
+                      font-mono text-sm font-bold
+                      text-text-secondary bg-surface-0">
+        {filename}
       </div>
+
+      {/* Diff rows */}
       <div className="overflow-x-auto">
-        {rows.map((row, i) => {
-          if (row.kind === "sep") {
-            return (
-              <div
-                key={i}
-                className="text-center text-2xs text-text-muted py-2 bg-surface-0 border-b border-border-subtle italic"
-              >
-                {row.label}
-              </div>
-            );
-          }
-
-          const isHighlighted = row.leftLine === highlightedLine;
-
-          return (
-            <div
-              key={i}
-              onClick={() =>
-                onLineClick(row.leftLine ?? row.rightLine ?? 0)
+        <table className="w-full border-collapse min-w-[600px]">
+          <tbody>
+            {rows.map((row, i) => {
+              if (row.kind === "sep") {
+                return (
+                  <tr key={i}
+                      className="bg-[#ddf4ff]">
+                    <td colSpan={4}
+                        className="px-3 py-1 font-mono text-xs
+                                   text-[#0550ae] select-none">
+                      {row.content}
+                    </td>
+                  </tr>
+                );
               }
-              className="grid grid-cols-2 font-mono text-xs leading-[1.65] border-b border-border-subtle cursor-pointer"
-            >
-              <div
-                className={`flex ${getLeftBg(row.kind)} ${
-                  isHighlighted ? "border-l-2 border-accent" : ""
-                }`}
-              >
-                <span className="w-[38px] flex-shrink-0 text-right pr-2 text-text-muted select-none">
-                  {row.leftLine ?? ""}
-                </span>
-                <pre className="whitespace-pre text-text-primary pr-3 m-0">
-                  {row.leftText}
-                </pre>
-              </div>
-              
-              <div
-                className={`flex ${getRightBg(row.kind)} border-l border-border-subtle`}
-              >
-                <span className="w-[38px] flex-shrink-0 text-right pr-2 text-text-muted select-none">
-                  {row.rightLine ?? ""}
-                </span>
-                <pre className="whitespace-pre text-text-primary pr-3 m-0">
-                  {row.rightText}
-                </pre>
-              </div>
-            </div>
-          );
-        })}
+
+              const isHighlighted =
+                highlightedLine !== null &&
+                ((highlightedLine.side === "old" &&
+                  row.oldLine === highlightedLine.line) ||
+                  (highlightedLine.side === "new" &&
+                    row.newLine === highlightedLine.line) ||
+                  (highlightedLine.side === "both" &&
+                    row.newLine === highlightedLine.line));
+
+              const rowBg =
+                row.kind === "remove"
+                  ? "bg-[#ffd7d5]"
+                  : row.kind === "add"
+                  ? "bg-[#ccffd8]"
+                  : "bg-white";
+
+              const symbol =
+                row.kind === "remove"
+                  ? "-"
+                  : row.kind === "add"
+                  ? "+"
+                  : " ";
+
+              const symbolColor =
+                row.kind === "remove"
+                  ? "text-[#cf222e]"
+                  : row.kind === "add"
+                  ? "text-[#1a7f37]"
+                  : "text-transparent";
+
+              return (
+                <tr key={i}
+                    ref={isHighlighted ? highlightedRowRef : null}
+                    onClick={() => {
+                      if (row.kind === "remove") {
+                        onLineClick({ line: row.oldLine!, side: "old" });
+                      } else if (row.kind === "add") {
+                        onLineClick({ line: row.newLine!, side: "new" });
+                      } else {
+                        onLineClick({ line: row.newLine!, side: "both" });
+                      }
+                    }}
+                    className={`${rowBg} cursor-pointer
+                      hover:brightness-95 transition-all
+                      ${isHighlighted
+                        ? "outline outline-2 outline-accent"
+                        : ""
+                      }`}>
+                  {/* Old line number */}
+                  <td className="w-[40px] text-right px-2 py-0.5
+                                 font-mono text-xs text-text-muted
+                                 select-none border-r border-border-subtle
+                                 align-top">
+                    {row.oldLine ?? ""}
+                  </td>
+                  {/* New line number */}
+                  <td className="w-[40px] text-right px-2 py-0.5
+                                 font-mono text-xs text-text-muted
+                                 select-none border-r border-border-subtle
+                                 align-top">
+                    {row.newLine ?? ""}
+                  </td>
+                  {/* Gutter symbol */}
+                  <td className={`w-[20px] text-center px-1 py-0.5
+                                  font-mono text-xs font-bold
+                                  select-none align-top ${symbolColor}`}>
+                    {symbol}
+                  </td>
+                  {/* Content */}
+                  <td className="px-3 py-0.5 align-top">
+                    <pre className="font-mono text-xs text-[#24292f]
+                                    whitespace-pre m-0 leading-[1.65]">
+                      {row.content}
+                    </pre>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );

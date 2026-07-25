@@ -33,7 +33,7 @@ export default function IssueCard({
                 <p className="text-sm font-bold">
                   Line {issue.line} — {issue.title}
                 </p>
-                <p className="text-sm text-text-secondary mt-1 leading-relaxed">
+                <p className="text-sm text-text-secondary mt-1 leading-relaxed break-words">
                   {issue.detail}
                 </p>
               </div>
@@ -75,7 +75,7 @@ export default function IssueCard({
                 className="flex gap-2 text-sm text-text-primary"
               >
                 <i className="ti ti-circle-check text-[oklch(55%_0.13_150)] flex-shrink-0 mt-0.5" />
-                <span>{positive}</span>
+                <span className="break-words">{positive}</span>
               </div>
             ))}
           </div>
